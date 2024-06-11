@@ -70,7 +70,9 @@ class Binary_ReSTE(Function):
     @staticmethod
     def forward(ctx, input, t, o):
         ctx.save_for_backward(input, t, o)
-        out = torch.sign(input)
+        out = torch.where(input <= -0.66, -1.0, 
+              torch.where((input > -0.66) & (input <= 0), -0.33, 
+              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
         return out
 
     @staticmethod
