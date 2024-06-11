@@ -39,7 +39,7 @@ class BinarizeConv2d(nn.Conv2d):
 
         # scaling factor
         scaler = torch.mean(torch.abs(w0), dim=(0, 1, 2, 3), keepdim=True)
-        bw = bw * scaler
+        # bw = bw * scaler
 
         # 1bit conv
         output = F.conv2d(ba, bw, self.bias, self.stride, self.padding,
