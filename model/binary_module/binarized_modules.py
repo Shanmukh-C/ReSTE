@@ -90,12 +90,12 @@ class Binary_ReSTE(Function):
         diff = input - closest_thresholds
 
         tmp = torch.zeros_like(input)
-        mask1 = (input <= t) & (input > interval)
+        mask1 = (diff <= t) & (diff > interval)
         tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
-        mask2 = (input >= -t) & (input < -interval)
+        mask2 = (diff >= -t) & (diff < -interval)
         tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
-        tmp[(input <= interval) & (input >= 0)] = approximate_function(interval, o) / interval
-        tmp[(input <= 0) & (input >= -interval)] = -approximate_function(-interval, o) / interval
+        tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
+        tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
 
         # calculate the final gradient
         grad_input = tmp * grad_output.clone()
