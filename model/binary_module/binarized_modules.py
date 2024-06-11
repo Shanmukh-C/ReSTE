@@ -27,7 +27,7 @@ class BinarizeConv2d(nn.Conv2d):
         if args.estimator == "STE":
             bw = Binary().apply(w0)
         elif args.estimator == "ReSTE":
-            bw = Binary_ReSTE_Mod().apply(w0, self.t.to(w0.device), self.o.to(w0.device))
+            bw = Binary_ReSTE().apply(w0, self.t.to(w0.device), self.o.to(w0.device))
 
         if args.a32:
             ba = a0
@@ -66,40 +66,13 @@ class Binary(Function):
 
 
 # ReSTE
-class Binary_ReSTE_Mod(Function):
-    @staticmethod
-    def forward(ctx, input, t, o):
-        ctx.save_for_backward(input, t, o)
-        out = torch.where(input <= -0.66, -1.0, 
-              torch.where((input > -0.66) & (input <= 0), -0.33, 
-              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
-        return out
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, t, o = ctx.saved_tensors
-
-        interval = 0.1
-
-        tmp = torch.zeros_like(input)
-        mask1 = (input <= t) & (input > interval)
-        tmp[mask1] = (1 / o) * torch.pow(input[mask1], (1 - o) / o)
-        mask2 = (input >= -t) & (input < -interval)
-        tmp[mask2] = (1 / o) * torch.pow(-input[mask2], (1 - o) / o)
-        tmp[(input <= interval) & (input >= 0)] = approximate_function(interval, o) / interval
-        tmp[(input <= 0) & (input >= -interval)] = -approximate_function(-interval, o) / interval
-
-        # calculate the final gradient
-        grad_input = tmp * grad_output.clone()
-
-        return grad_input, None, None
-
-# ReSTE
 class Binary_ReSTE(Function):
     @staticmethod
     def forward(ctx, input, t, o):
         ctx.save_for_backward(input, t, o)
-        out = torch.sign(input)
+        out = torch.where(input <= -1.0, -1.5, 
+              torch.where((input > -1.0) & (input <= 0), -0.5, 
+              torch.where((input > 0) & (input <= 1.0), 0.5, 1.5)))
         return out
 
     @staticmethod
