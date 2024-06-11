@@ -65,14 +65,14 @@ class Binary(Function):
         return grad_input, None, None
 
 
-# ReSTE
+#ReSTE
 class Binary_ReSTE(Function):
     @staticmethod
     def forward(ctx, input, t, o):
         ctx.save_for_backward(input, t, o)
-        out = torch.where(input <= -1.0, -1.5, 
-              torch.where((input > -1.0) & (input <= 0), -0.5, 
-              torch.where((input > 0) & (input <= 1.0), 0.5, 1.5)))
+        out = torch.where(input <= -0.66, -1.0, 
+              torch.where((input > -0.66) & (input <= 0), -0.33, 
+              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
         return out
 
     @staticmethod
@@ -81,11 +81,19 @@ class Binary_ReSTE(Function):
 
         interval = 0.1
 
+        # Determine the closest thresholds
+        closest_thresholds = torch.where(input <= -0.66, -1.0, 
+                             torch.where((input > -0.66) & (input <= 0), -0.33, 
+                             torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+
+        # Subtract the input from the closest threshold
+        diff = input - closest_thresholds
+
         tmp = torch.zeros_like(input)
         mask1 = (input <= t) & (input > interval)
-        tmp[mask1] = (1 / o) * torch.pow(input[mask1], (1 - o) / o)
+        tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
         mask2 = (input >= -t) & (input < -interval)
-        tmp[mask2] = (1 / o) * torch.pow(-input[mask2], (1 - o) / o)
+        tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
         tmp[(input <= interval) & (input >= 0)] = approximate_function(interval, o) / interval
         tmp[(input <= 0) & (input >= -interval)] = -approximate_function(-interval, o) / interval
 
