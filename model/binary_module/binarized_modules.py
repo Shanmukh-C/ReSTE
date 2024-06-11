@@ -39,7 +39,7 @@ class BinarizeConv2d(nn.Conv2d):
 
         # scaling factor
         scaler = torch.mean(torch.abs(w0), dim=(0, 1, 2, 3), keepdim=True)
-        # bw = bw * scaler
+        bw = bw * scaler
 
         # 1bit conv
         output = F.conv2d(ba, bw, self.bias, self.stride, self.padding,
@@ -70,9 +70,9 @@ class Binary_ReSTE(Function):
     @staticmethod
     def forward(ctx, input, t, o):
         ctx.save_for_backward(input, t, o)
-        out = torch.where(input <= -0.66, -1.0, 
-              torch.where((input > -0.66) & (input <= 0), -0.33, 
-              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+        out = torch.where(input <= -0.33, -0.5, 
+              torch.where((input > -0.33) & (input <= 0), -0.165, 
+              torch.where((input > 0) & (input <= 0.33), 0.165, 0.5)))
         return out
 
     @staticmethod
