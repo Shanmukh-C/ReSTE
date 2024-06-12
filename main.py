@@ -272,7 +272,7 @@ def main():
                      'Training Prec@1 {train_prec1:.3f} \t'
                      'Training Prec@5 {train_prec5:.3f} \n'
                      'Validation loss {val_loss:.4f} \t'
-                     'Validation Prec@1 {val_prec1:.3f} \t'
+                     'Validation Prec@1 {best_prec1:.3f} \t'
                      'Validation Prec@5 {val_prec5:.3f} \n'
                      .format(epoch + 1, train_loss=train_loss, val_loss=val_loss,
                              train_prec1=train_prec1, val_prec1=val_prec1,
