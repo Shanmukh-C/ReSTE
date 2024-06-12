@@ -91,9 +91,9 @@ class Binary_ReSTE(Function):
 
         tmp = torch.zeros_like(input)
         mask1 = (diff <= t) & (diff > interval)
-        tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
+        tmp[mask1] = (1 / o) * torch.pow(diff[mask1], (1 - o) / o)
         mask2 = (diff >= -t) & (diff < -interval)
-        tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
+        tmp[mask2] = (1 / o) * torch.pow(-diff[mask2], (1 - o) / o)
         tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
         tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
 
