@@ -81,24 +81,24 @@ class Binary_ReSTE(Function):
 
         interval = 0.1
 
-        # Determine the closest thresholds
-        closest_thresholds = torch.where(input <= -0.66, -1.0, 
-                             torch.where((input > -0.66) & (input <= 0), -0.33, 
-                             torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+        thresholds = torch.tensor([-1.0, -0.33, 0.33, 1.0])
 
-        # Subtract the input from the closest threshold
-        diff = input - closest_thresholds
+        tmp_sum = torch.zeros_like(input)
+        
+        for threshold in thresholds:
+            diff = input - threshold
+            
+            tmp = torch.zeros_like(input)
+            mask1 = (diff <= t) & (diff > interval)
+            tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
+            mask2 = (diff >= -t) & (diff < -interval)
+            tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
+            tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
+            tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
+            
+            tmp_sum += tmp
 
-        tmp = torch.zeros_like(input)
-        mask1 = (diff <= t) & (diff > interval)
-        tmp[mask1] = (1 / o) * torch.pow(diff[mask1], (1 - o) / o)
-        mask2 = (diff >= -t) & (diff < -interval)
-        tmp[mask2] = (1 / o) * torch.pow(-diff[mask2], (1 - o) / o)
-        tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
-        tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
-
-        # calculate the final gradient
-        grad_input = tmp * grad_output.clone()
+        grad_input = tmp_sum * grad_output.clone()
 
         return grad_input, None, None
 
