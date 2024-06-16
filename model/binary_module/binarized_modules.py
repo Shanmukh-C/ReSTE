@@ -84,6 +84,8 @@ class Binary_ReSTE(Function):
                              torch.where((input > -0.66) & (input <= 0), -0.33, 
                              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
 
+        thresholds = torch.tensor([-1.0, -0.33, 0.33, 1.0])
+
         tmp_sum = torch.zeros_like(input)
         for threshold in thresholds:
             diff = input - threshold
