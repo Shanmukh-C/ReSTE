@@ -8,8 +8,6 @@ import torch.nn.functional as F
 from torch.autograd import Function, Variable
 from scipy.stats import ortho_group
 from utils.arguments import args
-
-
 class BinarizeConv2d(nn.Conv2d):
     def __init__(self, *kargs, **kwargs):
         super(BinarizeConv2d, self).__init__(*kargs, **kwargs)
@@ -18,17 +16,14 @@ class BinarizeConv2d(nn.Conv2d):
         self.o = torch.tensor(1).float()
         self.t_a = torch.tensor(1.5).float()
         self.o_a = torch.tensor(1).float()
-
     def forward(self, input):
         a0 = input
         w0 = self.weight
-
         # binarize
         if args.estimator == "STE":
             bw = Binary().apply(w0)
         elif args.estimator == "ReSTE":
             bw = Binary_ReSTE().apply(w0, self.t.to(w0.device), self.o.to(w0.device))
-
         if args.a32:
             ba = a0
         else:
@@ -36,18 +31,13 @@ class BinarizeConv2d(nn.Conv2d):
                 ba = Binary().apply(a0)
             elif args.estimator == "ReSTE":
                 ba = Binary_ReSTE().apply(a0, self.t_a.to(w0.device), self.o_a.to(w0.device))
-
         # scaling factor
         scaler = torch.mean(torch.abs(w0), dim=(0, 1, 2, 3), keepdim=True)
         bw = bw * scaler
-
         # 1bit conv
         output = F.conv2d(ba, bw, self.bias, self.stride, self.padding,
                           self.dilation, self.groups)
-
         return output
-
-
 # STE
 class Binary(Function):
     @staticmethod
@@ -55,7 +45,6 @@ class Binary(Function):
         ctx.save_for_backward(input)
         out = torch.sign(input)
         return out
-
     @staticmethod
     def backward(ctx, grad_output):
         input = ctx.saved_tensors
@@ -63,8 +52,6 @@ class Binary(Function):
         tmp[torch.abs(input) > 1] = 0
         grad_input = tmp * grad_output.clone()
         return grad_input, None, None
-
-
 #ReSTE
 class Binary_ReSTE(Function):
     @staticmethod
@@ -74,7 +61,6 @@ class Binary_ReSTE(Function):
               torch.where((input > -0.66) & (input <= 0), -0.33, 
               torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
         return out
-
     @staticmethod
     def backward(ctx, grad_output):
         input, t, o = ctx.saved_tensors
@@ -83,34 +69,24 @@ class Binary_ReSTE(Function):
         closest_thresholds = torch.where(input <= -0.66, -1.0, 
                              torch.where((input > -0.66) & (input <= 0), -0.33, 
                              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+        # Subtract the input from the closest threshold
+        diff = input - closest_thresholds
 
-        thresholds = torch.tensor([-1.0, -0.33, 0.33, 1.0])
+        tmp = torch.zeros_like(input)
+        mask1 = (diff <= t) & (diff > interval)
+        tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
+        mask2 = (diff >= -t) & (diff < -interval)
+        tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
+        tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
+        tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
 
-        tmp_sum = torch.zeros_like(input)
-        for threshold in thresholds:
-            diff = input - threshold
-
-            tmp = torch.zeros_like(input)
-            mask1 = (diff <= t) & (diff > interval)
-            tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
-            mask2 = (diff >= -t) & (diff < -interval)
-            tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
-            tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
-            tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
-
-            tmp_sum += tmp
-
-        grad_input = tmp_sum * grad_output.clone()
-
+        # calculate the final gradient
+        grad_input = tmp * grad_output.clone()
         return grad_input, None, None
-
-
 def approximate_function(x, o):
     if x >= 0:
         return math.pow(x, 1 / o)
     else:
         return -math.pow(-x, 1 / o)
-
-
 if __name__ == "__main__":
     pass
