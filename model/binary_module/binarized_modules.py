@@ -70,13 +70,16 @@ class Binary_ReSTE(Function):
                              torch.where((input > -0.66) & (input <= 0), -0.33, 
                              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
         # Subtract the input from the closest threshold
-        diff = input - closest_thresholds
+        diff = torch.where(closest_thresholds == -1.0, input - (-0.66),
+               torch.where(closest_thresholds == -0.33, input - 0.0, 
+               torch.where(closest_thresholds == 0.33, input - 0.0, input - 0.66)))
+
 
         tmp = torch.zeros_like(input)
         mask1 = (diff <= t) & (diff > interval)
-        tmp[mask1] = (1 / (o)) * torch.pow(diff[mask1], (1 - o) / o)
+        tmp[mask1] = (1 / (2*o)) * torch.pow(diff[mask1], (1 - o) / o)
         mask2 = (diff >= -t) & (diff < -interval)
-        tmp[mask2] = (1 / (o)) * torch.pow(-diff[mask2], (1 - o) / o)
+        tmp[mask2] = (1 / (2*o)) * torch.pow(-diff[mask2], (1 - o) / o)
         tmp[(diff <= interval) & (diff >= 0)] = approximate_function(interval, o) / interval
         tmp[(diff <= 0) & (diff >= -interval)] = -approximate_function(-interval, o) / interval
 
