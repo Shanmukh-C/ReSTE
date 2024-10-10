@@ -57,22 +57,26 @@ class Binary_ReSTE(Function):
     @staticmethod
     def forward(ctx, input, t, o):
         ctx.save_for_backward(input, t, o)
-        out = torch.where(input <= -0.66, -1.0, 
-              torch.where((input > -0.66) & (input <= 0), -0.33, 
-              torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+        out = torch.where(input <= -0.33, -0.5,  
+                             torch.where((input > -0.33) & (input <= 0), -0.165, 
+                             torch.where((input > 0) & (input <= 0.33), 0.165, 
+                             0.5)))
         return out
     @staticmethod
     def backward(ctx, grad_output):
         input, t, o = ctx.saved_tensors
         interval = 0.1
         # Determine the closest thresholds
-        closest_thresholds = torch.where(input <= -0.66, -1.0, 
-                             torch.where((input > -0.66) & (input <= 0), -0.33, 
-                             torch.where((input > 0) & (input <= 0.66), 0.33, 1.0)))
+        closest_thresholds = torch.where(input <= -0.33, -0.5,  
+                             torch.where((input > -0.33) & (input <= 0), -0.165, 
+                             torch.where((input > 0) & (input <= 0.33), 0.165, 
+                             0.5)))
+        
         # Subtract the input from the closest threshold
-        diff = torch.where(closest_thresholds == -1.0, input - (-0.66),
-               torch.where(closest_thresholds == -0.33, input - 0.0, 
-               torch.where(closest_thresholds == 0.33, input - 0.0, input - 0.66)))
+        diff = torch.where(closest_thresholds == -0.5, input - (-0.33), 
+               torch.where(closest_thresholds == -0.165, input - 0.0,   
+               torch.where(closest_thresholds == 0.165, input - 0.0,    
+               input - 0.33)))
 
 
         tmp = torch.zeros_like(input)
